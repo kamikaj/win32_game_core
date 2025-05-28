@@ -30,7 +30,7 @@ Nauczyć się:
 
 ## Technologie
 
-- Język: C++
+- Język: C++, C
 - Win32 API
 - GDI (Graphics Device Interface)
 - Kompilator: MSVC / Clang / MinGW
