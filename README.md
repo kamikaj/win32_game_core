@@ -1,66 +1,57 @@
-Projekt: win32_game_core	
----
-Autor:	Kamil Sitarski (kamikaj)
----
-Opis:	  Pierwszy krok w nauce renderowania 2D w czystym Win32 API (bez bibliotek zewnętrznych).
- 		     Aplikacja tworzy okno i rysuje gradient w pamięci RAM, który następnie wyświetla na ekranie.
-        Projekt oparty na serii "Handmade Hero" autorstwa Casey'ego Muratori'ego (Molly Rokcet).
----
+# ⚙️ win32_gamecore — Low-Level 2D Software Renderer Baseline
 
-## Cel projektu
+A lightweight, zero-dependency 2D software rendering engine built from scratch using the raw **Win32 API** and **GDI (Graphics Device Interface)**. This repository serves as a low-level foundational base for custom game engines, completely bypassing modern third-party wrappers (like SDL, SFML, or GLFW) to communicate directly with the Windows kernel subsystem.
 
-Nauczyć się:
-- Jak działa system okienkowy Windows (Win32 API)
-- Jak ręcznie zarządzać pamięcią (bitmapa w RAM)
-- Jak wyświetlać grafikę przez GDI (`StretchDIBits`)
-- Jak przetwarzać komunikaty systemowe (message loop)
+The project structure and memory-mapping paradigms are deeply inspired by Casey Muratori's **Handmade Hero** series, focused on writing clean, high-performance, and platform-aware C/C++ code.
 
 ---
 
-## Co robi ten program?
+## 🛠️ Core Engineering & Learning Objectives
 
-- Tworzy własne okno Windows bez żadnych frameworków.
-- Obsługuje zdarzenia systemowe (resize, zamknięcie, itp.).
-- Tworzy i zarządza bitmapą w pamięci (Device Independent Bitmap).
-- Renderuje dynamiczny gradient kolorów (zielono-niebieski).
-- Rysuje grafikę do RAM, a następnie wyświetla ją w oknie.
+This project was built to master the inner workings of operating systems, hardware memory layouts, and real-time application pipelines:
 
----
-
-
-## Technologie
-
-- Język: C++, C
-- Win32 API
-- GDI (Graphics Device Interface)
-- Kompilator: MSVC / Clang / MinGW
+* **Platform Windowing Subsystem:** Deep-dive into registering window classes (`WNDCLASS`), managing window procedures (`WindowProc` callbacks), and handling core OS messages (`WM_PAINT`, `WM_SIZE`, `WM_DESTROY`).
+* **Manual Virtual Memory Mapping:** Bypassing standard heap allocators (`malloc`/`new`) to request raw virtual memory pages directly from the OS kernel using `VirtualAlloc` and handling lifecycle releases with `VirtualFree`.
+* **Real-Time Message Pumping:** Transitioning from blocking architectures (`GetMessage`) to active, high-throughput polling loops (`PeekMessage`) to guarantee uninterrupted frame rendering independent of OS event queues.
+* **Bitwise Software Rasterization:** Implementing a direct-to-RAM software pixel pipeline, factoring in hardware byte alignment, pitch stride calculation, and **Little-Endian** byte ordering architecture.
 
 ---
 
-## Czego się uczę
+## 🖥️ The Software-to-Hardware Rendering Pipeline
 
-- Tworzenie okna przy pomocy `CreateWindowEx`
-- Praca z komunikatami systemowymi (`WM_PAINT`, `WM_SIZE`, itd.)
-- Renderowanie grafiki do bufora w pamięci i jej wyświetlanie
-- Różnice między `PeekMessage` a `GetMessage`
-- Architektura Little Endian i reprezentacja kolorów w pamięci
+The rendering system bypasses the modern GPU stack, writing pixel color data directly into a dedicated block of system RAM, which is then blitted to the screen coordinate system:
 
----
+1. **`VirtualAlloc` Allocation:** Allocates a contiguous, page-aligned pixel buffer in system memory (`BitmapMemory`) sized exactly to the window dimensions $\text{Width} \times \text{Height} \times 4\text{ bytes per pixel}$.
+2. **`RenderWeirdGradient` Compute:** Loops through the allocated buffer using 32-bit wskaźniki (`uint32*`). It manipulates raw memory registers using bit-shifting operations to map vertical and horizontal values to color channels.
+3. **`StretchDIBits` Blitting:** GDI passes the raw buffer straight to the Device Context (`HDC`), translating the bitmap memory straight into the window's client rectangle area.
 
-## Struktura pliku źródłowego
-
-Plik zawiera:
-- Definicje typów i aliasów (`uint8`, `uint32`, itd.)
-- Makra ułatwiające kontrolę widoczności (`internal`, `local_persist`)
-- Funkcje: `RenderWeirdGradient`, `Win32ResizeDIBSection`, `Win32UpdateWindow`
-- Callback okna `Win32MainWindowCallback`
-- Główna funkcja aplikacji `WinMain`
+> ⚠️ **Memory Layout Precision:** Colors are structured in memory as **BB GG RR xx** (Blue, Green, Red, Alpha-padded), which on Little-Endian CPU registers translates directly to the hex format `0x00RRGGBB`.
 
 ---
 
-## Inspiracja
+## 💻 Technical Stack Matrix
 
-Projekt oparty na [Handmade Hero](https://handmadehero.org) – serii pokazującej jak stworzyć własny silnik i grę od zera, krok po kroku, z dokładnym zrozumieniem działania każdego elementu.
+| Layer | Component / Technology |
+| :--- | :--- |
+| **Languages** | C++ / C (Procedural paradigm) |
+| **Operating System API** | Native Win32 API (Core User32 & Kernel32 subsystems) |
+| **Graphics Subsystem** | GDI (Graphics Device Interface — Windows legacy blitting) |
+| **Memory Management** | Kernel page allocation (`VirtualAlloc` / `VirtualFree`) |
+| **Supported Compilers** | MSVC (cl.exe), Clang, MinGW |
 
 ---
 
+## 📂 Codebase Architecture Breakdown
+
+The entire core is neatly sectioned within a single source file to maintain strict cache-locality and simple compilation:
+
+* **Type Aliases & Macros:** Explicit width-defined integer types (`uint8`, `uint32`) and semantic local re-definitions for the `static` keyword (`internal`, `local_persist`, `global_variable`).
+* **`Win32ResizeDIBSection`:** Handles dynamic window resizing by freeing old structures and re-allocating a Device Independent Bitmap section to match new coordinate bounds.
+* **`Win32MainWindowCallback`:** The primary window message processing center, dictating application behavior upon user sizing or termination signals.
+* **`WinMain` Entry Point:** Initializes the platform window, instantiates the active `PeekMessage` loop, updates offsets, and ticks the software renderer frame-by-frame.
+
+---
+
+## 💡 Inspiration
+
+This project is part of a low-level educational journey guided by [Handmade Hero](https://handmadehero.org). It represents a deliberate choice to understand the computer at a hardware and operating-system level before building higher abstracted gameplay layers.
